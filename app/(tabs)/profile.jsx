@@ -12,10 +12,11 @@ import { profileView } from "../../utils/profileDetails";
 import { Ionicons } from "@expo/vector-icons";
 import { useUsers } from "../../hooks/useUser";
 import { useEffect } from "react";
+import { useRouter } from "expo-router";
 const { width, height } = Dimensions.get("window");
-
 const ProfileScreen = () => {
   const { currentUser, getCurrentUser } = useUsers();
+  const router = useRouter();
   useEffect(() => {
     getCurrentUser();
   }, [getCurrentUser]);
@@ -44,7 +45,10 @@ const ProfileScreen = () => {
           paddingBottom: 100,
         }}
         renderItem={({ item }) => (
-          <TouchableOpacity style={styles.renderContainer}>
+          <TouchableOpacity
+            style={styles.renderContainer}
+            onPress={() => router.push(`(root)/${item.link}`)}
+          >
             <View style={styles.leftRender}>
               <Ionicons name={item.icon} size={30} color="#28B446" />
               <Text style={{ fontSize: 20, fontWeight: "600" }}>

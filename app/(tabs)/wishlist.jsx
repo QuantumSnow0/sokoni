@@ -5,7 +5,6 @@ import {
   Dimensions,
   FlatList,
   TouchableWithoutFeedback,
-  StatusBar,
   Image,
   TouchableOpacity,
 } from "react-native";
@@ -15,6 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useWishList } from "../../hooks/useWishlist";
 import { useEffect } from "react";
+import CustomLoader from "../../components/CustomLoader";
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const ACTION_WIDTH = SCREEN_WIDTH / 4;
 
@@ -37,7 +37,6 @@ export default function SwipeableItem() {
   );
   return (
     <>
-      <StatusBar backgroundColor="white" barStyle="dark-content" />
       <View
         style={{
           display: "flex",
@@ -63,73 +62,81 @@ export default function SwipeableItem() {
         <View style={{ padding: 10 }}></View>
       </View>
       <View style={{ flex: 1 }}>
-        <FlatList
-          data={wishlist}
-          style={{ flex: 1 }}
-          contentContainerStyle={{
-            paddingBottom: 40,
-          }}
-          renderItem={({ item, index }) => (
-            <View style={styles.wrapper} key={index}>
-              <Swipeable renderRightActions={() => renderRightActions(item.id)}>
-                <View style={styles.item}>
-                  {/* left wing */}
-                  <View
-                    style={{
-                      display: "flex",
-                      flexDirection: "row",
-                      alignItems: "center",
-                      gap: 10,
-                    }}
-                  >
-                    <Image
-                      source={{ uri: item.image }}
+        {isLoading ? (
+          <View style={{ marginTop: 10 }}>
+            <CustomLoader />
+          </View>
+        ) : (
+          <FlatList
+            data={wishlist}
+            style={{ flex: 1 }}
+            contentContainerStyle={{
+              paddingBottom: 40,
+            }}
+            renderItem={({ item, index }) => (
+              <View style={styles.wrapper} key={index}>
+                <Swipeable
+                  renderRightActions={() => renderRightActions(item.id)}
+                >
+                  <View style={styles.item}>
+                    {/* left wing */}
+                    <View
                       style={{
-                        width: SCREEN_WIDTH / 6,
-                        height: SCREEN_WIDTH / 4,
-                        borderRadius: 10,
+                        display: "flex",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 10,
                       }}
-                    />
-                    <View>
-                      <Text
+                    >
+                      <Image
+                        source={{ uri: item.image }}
                         style={{
-                          color: "#6CC51D",
-                          fontSize: 15,
-                          fontWeight: "700",
+                          width: SCREEN_WIDTH / 6,
+                          height: SCREEN_WIDTH / 4,
+                          borderRadius: 10,
                         }}
-                      >
-                        ksh {item.price}
-                      </Text>
-                      <Text style={{ fontSize: 15, fontWeight: "900" }}>
-                        {item.title}
-                      </Text>
-                      <Text style={{ fontSize: 17, color: "#868889" }}>
-                        {item.size}
-                      </Text>
+                      />
+                      <View>
+                        <Text
+                          style={{
+                            color: "#6CC51D",
+                            fontSize: 15,
+                            fontWeight: "700",
+                          }}
+                        >
+                          ksh {item.price}
+                        </Text>
+                        <Text style={{ fontSize: 15, fontWeight: "900" }}>
+                          {item.title}
+                        </Text>
+                        <Text style={{ fontSize: 17, color: "#868889" }}>
+                          {item.size}
+                        </Text>
+                      </View>
+                    </View>
+                    {/* right wing */}
+                    <View
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        paddingHorizontal: 10,
+                      }}
+                    >
+                      <TouchableOpacity>
+                        <Text style={styles.adjust}>+</Text>
+                      </TouchableOpacity>
+                      <Text style={{ fontSize: 20 }}>4</Text>
+                      <TouchableOpacity>
+                        <Text style={styles.adjust}>-</Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
-                  {/* right wing */}
-                  <View
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      paddingHorizontal: 10,
-                    }}
-                  >
-                    <TouchableOpacity>
-                      <Text style={styles.adjust}>+</Text>
-                    </TouchableOpacity>
-                    <Text style={{ fontSize: 20 }}>4</Text>
-                    <TouchableOpacity>
-                      <Text style={styles.adjust}>-</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </Swipeable>
-            </View>
-          )}
-        />
+                </Swipeable>
+              </View>
+            )}
+          />
+        )}
       </View>
     </>
   );
