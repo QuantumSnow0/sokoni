@@ -7,18 +7,7 @@ import TypingDotsLoader from "../../components/TypingDotsLoader";
 export default function CartScreen() {
   const pushToken = usePushNotifications();
 
-  return (
-    <View>
-      <CustomLoader dotColor="#007AFF" dotSize={14} dotSpacing={10} />
-      <RotatingDotsLoader size={80} color="#FF6B00" />
-      <TypingDotsLoader
-        label="getting favourites"
-        dotColor="#007AFF"
-        textColor="#222"
-        speed={400}
-      />
-    </View>
-  );
+  return <View></View>;
 }
 
 const styles = StyleSheet.create({

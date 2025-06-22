@@ -4,15 +4,16 @@ import { Slot, Stack } from "expo-router";
 
 const RootLayout = () => {
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <SafeScreen>
-        <Slot />
-      </SafeScreen>
-    </Stack>
+    <SafeScreen>
+      {/* Move Stack inside SafeScreen */}
+      <Stack
+        screenOptions={{
+          headerShown: false,
+        }}
+      >
+        <Stack.Screen name="address" options={{ headerShown: false }} />
+      </Stack>
+    </SafeScreen>
   );
 };
 

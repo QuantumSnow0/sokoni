@@ -11,7 +11,7 @@ console.log(clerkPublishableKey);
 const RootLayout = () => {
   return (
     <SafeScreen>
-      <StatusBar backgroundColor="red" style="dark" />
+      <StatusBar translucent style="dark" />
       <ClerkProvider
         publishableKey={
           "pk_test_c2VsZWN0ZWQtZ2xvd3dvcm0tMS5jbGVyay5hY2NvdW50cy5kZXYk"

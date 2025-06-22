@@ -2,11 +2,19 @@ import { Redirect, Stack } from "expo-router";
 import { useAuth } from "@clerk/clerk-expo";
 
 export default function AuthRoutesLayout() {
-  const { isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn } = useAuth();
 
-  if (isSignedIn) {
-    return <Redirect href={"/"} />;
+  // Wait until Clerk finishes loading
+  if (!isLoaded) {
+    return null; // or a loading spinner
   }
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <>
+      {/* Mount Stack FIRST */}
+      <Stack screenOptions={{ headerShown: false }} />
+      {/* Then redirect AFTER mounting */}
+      {isSignedIn && <Redirect href="/" />}
+    </>
+  );
 }

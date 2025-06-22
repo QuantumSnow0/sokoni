@@ -22,7 +22,7 @@ const ProfileScreen = () => {
   }, [getCurrentUser]);
   const firstName = currentUser?.name?.split(" ")[0];
   const initName = firstName?.split("")[0];
-  console.log(currentUser);
+
   return (
     <>
       <FlatList
