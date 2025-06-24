@@ -13,12 +13,14 @@ import {
 import { COLORS } from "../../utils/color";
 import { Image } from "expo-image";
 import { SIZES } from "../../utils/dimensions";
+import { useAuth } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import { useSignUp, useUser } from "@clerk/clerk-expo";
 import { Link, useRouter } from "expo-router";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { useState } from "react";
 import { useUsers } from "../../hooks/useUser";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 const { width, height } = Dimensions.get("window");
 export default function SignUpScreen() {
   const { registerUser } = useUsers();
@@ -34,10 +36,11 @@ export default function SignUpScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [verifyError, setVerifyError] = useState("");
-  const { user } = useUser();
+  const { getToken } = useAuth();
   // Handle submission of sign-up form
   const onSignUpPress = async () => {
     if (!isLoaded) return;
+
     // Start sign-up process using email and password provided
     if (!phone) return setError("phone number required");
     setLoading(true);
@@ -76,7 +79,23 @@ export default function SignUpScreen() {
       // and redirect the user
       if (signUpAttempt.status === "complete") {
         await setActive({ session: signUpAttempt.createdSessionId });
-        registerUser(emailAddress, emailAddress.split("@")[0], phone);
+        console.log("am here");
+        const token = await getToken({ template: "api_access" });
+        console.log("✅ Token after verification:", token);
+
+        if (token) {
+          console.log("now am here");
+          await AsyncStorage.clear(); // Clear old tokens first
+          await AsyncStorage.setItem("token", token);
+          await registerUser(
+            token,
+            emailAddress,
+            emailAddress.split("@")[0],
+            phone
+          );
+          console.log("the end");
+        }
+        //registerUser(emailAddress, emailAddress.split("@")[0], phone);
         router.replace("/");
       } else {
         // If the status is not complete, check why. User may need to
@@ -86,6 +105,7 @@ export default function SignUpScreen() {
     } catch (err) {
       // See https://clerk.com/docs/custom-flows/error-handling
       // for more info on error handling
+      console.log("error verifying user :", err);
       setVerifyError(err?.errors?.[0].longMessage);
     }
   };

@@ -1,33 +1,16 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "../utils/api";
 import { io } from "socket.io-client";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const fetchRoute = `${api}/api/wishlist`;
-const socket = io(api); // Connect to backend
 
-export const useWishList = () => {
+export const useWishList = (token) => {
   const [wishlist, setWishlist] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [token, setToken] = useState("");
+  const socketRef = useRef(null);
 
-  // Fetch token once
-  useEffect(() => {
-    const getData = async () => {
-      try {
-        const value = await AsyncStorage.getItem("token");
-        if (value !== null) {
-          setToken(value);
-        }
-      } catch (e) {
-        console.log("error getting token: ", e);
-      }
-    };
-    getData();
-  }, []);
-
-  // Fetch wishlist for this user
   const fetchWishlist = useCallback(async () => {
     if (!token) return;
     setIsLoading(true);
@@ -42,13 +25,12 @@ export const useWishList = () => {
       const data = await response.json();
       setWishlist(data);
     } catch (error) {
-      console.log("error fetching wishlist: ", error);
+      console.log("Error fetching wishlist:", error);
     } finally {
       setIsLoading(false);
     }
   }, [token]);
 
-  // Toggle wishlist item
   const createWishList = useCallback(
     async (productId) => {
       if (!token) return;
@@ -64,9 +46,9 @@ export const useWishList = () => {
         });
         const data = await response.json();
         setMessage(data?.message || "");
-        await fetchWishlist(); // 💡 Refresh list after toggle
+        await fetchWishlist();
       } catch (error) {
-        console.log("error creating wishlist", error);
+        console.log("Error creating wishlist:", error);
       } finally {
         setIsLoading(false);
       }
@@ -74,22 +56,47 @@ export const useWishList = () => {
     [token, fetchWishlist]
   );
 
-  // Listen to Socket.io for real-time wishlist changes
+  // ✅ Setup socket connection
   useEffect(() => {
-    if (!token) return;
+    const setupSocket = async () => {
+      if (!token) return;
 
-    const handleWishlistUpdate = ({ userId }) => {
-      AsyncStorage.getItem("userId").then((currentUserId) => {
-        if (currentUserId === userId) {
-          fetchWishlist(); // Only refresh if it’s this user's wishlist
+      const userId = await AsyncStorage.getItem("userId");
+      if (!userId) return;
+
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+
+      const socket = io(api, {
+        auth: { userId },
+        transports: ["websocket"],
+      });
+
+      socketRef.current = socket;
+
+      socket.on("connect", () => {
+        console.log("✅ Socket connected:", socket.id);
+      });
+
+      socket.on("wishlist:update", (data) => {
+        if (data.userId === userId) {
+          console.log("🔁 Received wishlist:update for current user");
+          fetchWishlist();
         }
+      });
+
+      socket.on("disconnect", () => {
+        console.log("❌ Socket disconnected");
       });
     };
 
-    socket.on("wishlist:update", handleWishlistUpdate);
+    setupSocket();
 
     return () => {
-      socket.off("wishlist:update", handleWishlistUpdate);
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
     };
   }, [token, fetchWishlist]);
 

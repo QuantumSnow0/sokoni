@@ -9,22 +9,37 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { Swipeable } from "react-native-gesture-handler";
-
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useWishList } from "../../hooks/useWishlist";
 import { useEffect } from "react";
 import CustomLoader from "../../components/CustomLoader";
+import { useState } from "react";
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const ACTION_WIDTH = SCREEN_WIDTH / 4;
 
-export default function SwipeableItem() {
-  const { wishlist, isLoading, fetchWishlist, createWishList } = useWishList();
+export default function Wishlist() {
+  const [token, setToken] = useState("");
+  const [userId, setUserId] = useState("");
+  useEffect(() => {
+    const loadAuth = async () => {
+      const t = await AsyncStorage.getItem("token");
+
+      if (t) setToken(t);
+    };
+    loadAuth();
+  }, []);
+  const { wishlist, isLoading, fetchWishlist, createWishList } =
+    useWishList(token);
 
   const router = useRouter();
   useEffect(() => {
-    fetchWishlist();
-  }, [fetchWishlist]);
+    if (token) {
+      fetchWishlist();
+    }
+  }, [token, fetchWishlist]);
+
   const renderRightActions = (id) => (
     <TouchableOpacity
       style={[styles.rightAction, { width: ACTION_WIDTH }]}

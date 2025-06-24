@@ -1,22 +1,26 @@
 import { useClerk } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
 
 const SignOutButton = () => {
-  // Use `useClerk()` to access the `signOut()` function
   const { signOut } = useClerk();
   const router = useRouter();
+
   const handleSignOut = async () => {
     try {
+      // Clear specific auth data from AsyncStorage
+      await AsyncStorage.removeItem("token");
+      await AsyncStorage.removeItem("userId");
+
       await signOut();
       router.push("(auth)/sign-in");
     } catch (err) {
-      // See https://clerk.com/docs/custom-flows/error-handling
-      // for more info on error handling
-      console.error(JSON.stringify(err, null, 2));
+      console.error("Sign-out error:", err);
     }
   };
+
   return (
     <TouchableOpacity onPress={handleSignOut} style={styles.container}>
       <Ionicons name="log-out-outline" size={30} color="#28B446" />
@@ -24,11 +28,11 @@ const SignOutButton = () => {
     </TouchableOpacity>
   );
 };
+
 export default SignOutButton;
 
 const styles = StyleSheet.create({
   container: {
-    display: "flex",
     flexDirection: "row",
     alignItems: "center",
     gap: 5,

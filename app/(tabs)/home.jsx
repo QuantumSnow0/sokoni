@@ -19,6 +19,7 @@ import { categories } from "../../utils/category";
 import FeaturedCard from "../components/FeaturedCard";
 import { useProducts } from "../../hooks/useProducts";
 import { useWishList } from "../../hooks/useWishlist";
+import CustomToast from "../../components/CustomToast";
 const { width, height } = Dimensions.get("window");
 const cardSpacing = 20;
 const cardWidth = (width - cardSpacing * 3) / 2;
@@ -28,15 +29,9 @@ export default function HomeScreen() {
   const { getToken } = useAuth();
   const [token, setToken] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  const { wishlist, createWishList, fetchWishlist } = useWishList();
-  const fetchToken = async () => {
-    try {
-      const reqToken = await getToken({ template: "api_access" });
-      setToken(reqToken);
-    } catch (error) {
-      console.error("Failed to fetch token:", error);
-    }
-  };
+  const { wishlist, createWishList, fetchWishlist } = useWishList(token);
+  const { products, isLoading, fetchProducts } = useProducts(token);
+
   useEffect(() => {
     const storeUserId = async () => {
       const getUserId = await AsyncStorage.getItem("userId");
@@ -44,27 +39,34 @@ export default function HomeScreen() {
         await AsyncStorage.setItem("userId", user.id);
       }
     };
-    storeUserId(); // ✅ CALL THE FUNCTION
+    storeUserId();
   }, [user]);
 
   useEffect(() => {
+    const fetchToken = async () => {
+      try {
+        const reqToken = await getToken({ template: "api_access" });
+        if (reqToken) {
+          setToken(reqToken);
+        }
+      } catch (error) {
+        console.error("Failed to fetch token:", error);
+      }
+    };
+
     fetchToken();
+  }, []);
+
+  useEffect(() => {
+    if (token) {
+      fetchProducts();
+    }
   }, [token]);
+
   useEffect(() => {
     fetchWishlist();
   }, [fetchWishlist]);
 
-  const { products, isLoading, fetchProducts } = useProducts(token);
-
-  useEffect(() => {
-    const setToken = async () => {
-      await AsyncStorage.setItem("token", token);
-    };
-    if (token) {
-      fetchProducts();
-      setToken();
-    }
-  }, [token]);
   const onRefresh = async () => {
     setRefreshing(true);
     await fetchProducts();
@@ -73,7 +75,7 @@ export default function HomeScreen() {
 
   return (
     <View style={{ flex: 1 }}>
-      {/* 🔍 Fixed Search Bar */}
+      {/* 🔍 Search Bar */}
       <View style={styles.fixedSearch}>
         <View style={styles.searchIcon}>
           <View style={styles.searchBar}>
@@ -94,7 +96,7 @@ export default function HomeScreen() {
         </View>
       </View>
 
-      {/* 🛒 Entire Content Inside FlatList */}
+      {/* 📦 Product List */}
       <FlatList
         data={isLoading ? [] : products}
         keyExtractor={(item, index) => index.toString()}
@@ -171,7 +173,7 @@ export default function HomeScreen() {
               contentContainerStyle={{ paddingVertical: 10 }}
             />
 
-            {/* 🛍️ Featured Products Header */}
+            {/* 🛍️ Featured Products */}
             <TouchableOpacity>
               <View style={styles.cat}>
                 <Text style={styles.sectionTitle}>Featured Products</Text>
@@ -188,6 +190,7 @@ export default function HomeScreen() {
               item={item}
               wishlist={wishlist}
               createWishList={createWishList}
+              isLoading={isLoading}
             />
           )
         }

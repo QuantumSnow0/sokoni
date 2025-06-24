@@ -51,8 +51,14 @@ export const useUsers = () => {
     }
   }, [token]);
 
-  const registerUser = async (email, name, phone) => {
-    if (!token || !email || !name || !phone) return;
+  const registerUser = async (token, email, name, phone) => {
+    if (!token || !email || !name || !phone)
+      return console.log({
+        token,
+        name,
+        email,
+        phone,
+      });
     setIsLoading(true);
     try {
       await fetch(userRoute, {
@@ -63,6 +69,7 @@ export const useUsers = () => {
         },
         body: JSON.stringify({ email, name, phone }),
       });
+      console.log("user registered");
     } catch (error) {
       console.log("Error registering user:", error);
     } finally {

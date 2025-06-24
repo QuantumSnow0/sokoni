@@ -46,8 +46,9 @@ export default {
     extra: {
       router: {},
       eas: {
-        projectId: "baa43be6-082e-47b5-ab1c-c2c85f29f936",
+        projectId: "526aef92-c194-4425-b61d-edb5b7683543",
       },
+
       EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY:
         process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY,
     },

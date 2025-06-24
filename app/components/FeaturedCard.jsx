@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { Image } from "expo-image";
+import CustomToast from "../../components/CustomToast";
 
 const { width } = Dimensions.get("window");
 

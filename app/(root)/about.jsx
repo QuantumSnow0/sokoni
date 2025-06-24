@@ -32,6 +32,11 @@ const About = () => {
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
 
+  // ✅ Password fields
+  const [current, setCurrent] = useState("");
+  const [newPass, setNewPass] = useState("");
+  const [confirmPass, setConfirmPass] = useState("");
+
   useEffect(() => {
     if (currentUser) {
       const { name = "", phone = "", email = "" } = currentUser;
@@ -69,14 +74,53 @@ const About = () => {
     }
   };
 
+  const changePassword = async () => {
+    if (!current || !newPass || !confirmPass) {
+      setError("Please fill in all password fields.");
+      setToastMessage("All fields are required.");
+      setToastVisible(true);
+      return;
+    }
+
+    if (newPass !== confirmPass) {
+      setError("New password and confirm password do not match.");
+      setToastMessage("Passwords do not match.");
+      setToastVisible(true);
+      return;
+    }
+
+    try {
+      await currentUser.updatePassword({
+        currentPassword: current,
+        newPassword: newPass,
+        signOutOfOtherSessions: true,
+      });
+
+      setError(null);
+      setToastMessage("Password changed successfully.");
+      setToastVisible(true);
+
+      setCurrent("");
+      setNewPass("");
+      setConfirmPass("");
+    } catch (err) {
+      console.error("Change password error:", err);
+      setError("Incorrect current password or weak new password.");
+      setToastMessage("Failed to change password.");
+      setToastVisible(true);
+    }
+  };
+
   return (
     <>
-      {/* ✅ Toast component */}
       <CustomToast
         visible={toastVisible}
         message={toastMessage}
         backgroundColor={error ? "#ff4d4f" : "#4BB543"}
-        onClose={() => setToastVisible(false)}
+        onClose={() => {
+          setToastVisible(false);
+          setError(null);
+        }}
       />
 
       <View>
@@ -146,19 +190,44 @@ const About = () => {
               icon="lock-closed-outline"
               placeholder="Current password"
               secureTextEntry
+              value={current}
+              onChangeText={setCurrent}
             />
             <CustomInput
               icon="lock-closed-outline"
               placeholder="New password"
-              secureTextEntry
-              isPasswordVisible
+              secureTextEntry={true}
+              value={newPass}
+              onChangeText={setNewPass}
             />
             <CustomInput
               icon="lock-closed-outline"
               placeholder="Confirm password"
               secureTextEntry
+              value={confirmPass}
+              onChangeText={setConfirmPass}
             />
           </View>
+
+          <TouchableOpacity
+            style={{
+              backgroundColor: "#6CC51D",
+              padding: 15,
+              borderRadius: 8,
+              marginTop: 10,
+            }}
+            onPress={changePassword}
+          >
+            <Text
+              style={{
+                color: "white",
+                textAlign: "center",
+                fontWeight: "bold",
+              }}
+            >
+              Change Password
+            </Text>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAwareScrollView>
 
