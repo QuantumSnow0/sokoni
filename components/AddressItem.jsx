@@ -1,26 +1,49 @@
 import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CustomInput from "./CustomInput";
 import CustomSwitch from "./CustomSwitch";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAddresses } from "../hooks/useAddresses";
 
-const AddressItem = () => {
+const AddressItem = ({ data }) => {
+  const [token, setToken] = useState("");
+  useEffect(() => {
+    const getToken = async () => {
+      const t = await AsyncStorage.getItem("token");
+      if (t) setToken(t);
+    };
+    getToken();
+  }, []);
+  const {
+    addresses,
+    fetchAddresses,
+    createAddress,
+    updateAddress,
+    deleteAddress,
+    loading,
+  } = useAddresses(token);
   const [isEnabled, setIsEnabled] = useState(false);
   const [isDisplayed, setIsDisplayed] = useState(false);
+  useEffect(() => {
+    fetchAddresses();
+  }, [fetchAddresses]);
   return (
     <View style={{ paddingTop: 30, paddingHorizontal: 15 }}>
       <View style={styles.defaultV}>
         <View>
-          <Text
-            style={{
-              alignSelf: "flex-start",
-              backgroundColor: "rgba(108, 197, 29, 0.1)",
-              color: "#6cc51d",
-              fontWeight: "800",
-            }}
-          >
-            DEFAULT
-          </Text>
+          {data.is_default && (
+            <Text
+              style={{
+                alignSelf: "flex-start",
+                backgroundColor: "rgba(108, 197, 29, 0.1)",
+                color: "#6cc51d",
+                fontWeight: "800",
+              }}
+            >
+              DEFAULT
+            </Text>
+          )}
         </View>
         <View style={styles.defaultContainer}>
           <View
@@ -56,16 +79,16 @@ const AddressItem = () => {
               }}
             >
               <Text style={{ fontSize: 15, fontWeight: "700" }}>
-                Bonface Muthuri
+                {data.full_name}
               </Text>
               <Text style={{ fontSize: 15, color: "#868889" }}>
-                Nairobi, Kenya
+                {data.region}
               </Text>
               <Text style={{ fontSize: 15, color: "#868889" }}>
-                westalands Road
+                {data.street}
               </Text>
               <Text style={{ fontSize: 15, fontWeight: "700" }}>
-                0724832555
+                {data.phone}
               </Text>
             </View>
           </View>

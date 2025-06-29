@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { api } from "../utils/api";
 import { io } from "socket.io-client";
+import { api } from "../utils/api";
 
 const productRoute = `${api}/api/products`;
-const socket = io(api); // 👈 Connect to backend
+
+// ✅ Keep socket connection here — but ensure it's created only once
+const socket = io(api, { transports: ["websocket"], autoConnect: true });
 
 export const useProducts = (token) => {
   const [products, setProducts] = useState([]);
@@ -30,31 +32,35 @@ export const useProducts = (token) => {
   }, [token]);
 
   useEffect(() => {
-    fetchProducts(); // Initial fetch
+    fetchProducts(); // 🟢 Initial fetch
 
-    // 💡 Handle real-time updates
-    socket.on("product:new", (newProduct) => {
+    // ✅ Handle real-time updates
+    const handleNew = (newProduct) => {
       setProducts((prev) => {
         const exists = prev.some((p) => p.id === newProduct.id);
         return exists ? prev : [newProduct, ...prev];
       });
-    });
+    };
 
-    socket.on("product:update", (updatedProduct) => {
+    const handleUpdate = (updatedProduct) => {
       setProducts((prev) =>
         prev.map((p) => (p.id === updatedProduct.id ? updatedProduct : p))
       );
-    });
+    };
 
-    socket.on("product:delete", (deletedId) => {
+    const handleDelete = (deletedId) => {
       setProducts((prev) => prev.filter((p) => p.id !== Number(deletedId)));
-    });
+    };
 
-    // Cleanup on unmount
+    socket.on("product:new", handleNew);
+    socket.on("product:update", handleUpdate);
+    socket.on("product:delete", handleDelete);
+
+    // ✅ Correct cleanup — match exact event names
     return () => {
-      socket.off("product:created");
-      socket.off("product:updated");
-      socket.off("product:deleted");
+      socket.off("product:new", handleNew);
+      socket.off("product:update", handleUpdate);
+      socket.off("product:delete", handleDelete);
     };
   }, [fetchProducts]);
 

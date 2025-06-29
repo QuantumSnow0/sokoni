@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   StyleSheet,
   Text,
@@ -8,35 +9,109 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { Image } from "expo-image";
-import CustomToast from "../../components/CustomToast";
+import { useCart } from "../../hooks/useCart";
+import TypingDotsLoader from "../../components/TypingDotsLoader";
 
 const { width } = Dimensions.get("window");
 
-const FeaturedCard = ({ item, wishlist, createWishList }) => {
+const FeaturedCard = ({
+  item,
+  wishlist,
+  createWishList,
+  width: cardWidth,
+  onAddToCartToast,
+}) => {
   const [like, setLike] = useState(false);
+  const [token, setToken] = useState("");
+  const {
+    cart,
+    cartLoading,
+    fetchCart,
+    addToCart,
+    updateCartItem,
+    deleteCartItem,
+  } = useCart(token);
+  const [adding, setAdding] = useState(false);
+  const [cartProduct, setCartProduct] = useState(null);
+  const [isCart, setIsCart] = useState(false);
 
-  // Sync `like` state with actual wishlist contents
+  // 🔐 Load Token from Storage
+  useEffect(() => {
+    const getToken = async () => {
+      const t = await AsyncStorage.getItem("token");
+      if (t) {
+        setToken(t);
+      }
+    };
+    getToken();
+  }, []);
+  useEffect(() => {
+    if (token) {
+      fetchCart();
+    }
+  }, [token]);
+
+  // 🛒 Check if product is in cart and store quantity
+  useEffect(() => {
+    const inCart = cart.some((p) => p.product_id === item.id);
+    setIsCart(inCart);
+
+    const current = cart.find((p) => p.product_id === item.id);
+    setCartProduct(current || null);
+  }, [cart, item.id]);
+
+  // ❤️ Check if in wishlist
   useEffect(() => {
     const isInWishlist = wishlist.some((product) => product.id === item.id);
     setLike(isInWishlist);
   }, [wishlist, item.id]);
 
+  // ❤️ Toggle Wishlist
   const addToWishList = async () => {
     setLike(!like);
     await createWishList(item.id);
   };
 
+  // ➕ Add to Cart
+  const handleCart = async (product) => {
+    setAdding(true);
+    try {
+      await addToCart(product.id);
+      if (onAddToCartToast) {
+        onAddToCartToast(`${product.title} added to cart`);
+      }
+    } catch (error) {
+      console.log("❌ Error adding to cart:", error);
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  // ➖ Decrease Quantity or Remove
+  const handleDecrease = () => {
+    if (cartProduct?.quantity > 1) {
+      updateCartItem(cartProduct.id, cartProduct.quantity - 1);
+    } else {
+      deleteCartItem(cartProduct.id);
+    }
+  };
+
+  // ➕ Increase Quantity
+  const handleIncrease = () => {
+    updateCartItem(cartProduct.id, cartProduct.quantity + 1);
+  };
+
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { width: cardWidth }]}>
       <View style={styles.container}>
-        {/* Discount Badge */}
+        {/* 🔖 Discount Badge */}
         {item.discount !== 0 && (
           <View style={styles.discountBadge}>
             <Text style={styles.discountText}>-{item.discount}%</Text>
           </View>
         )}
 
-        {/* Heart Button */}
+        {/* ❤️ Wishlist Icon */}
         <View style={{ padding: 7 }}>
           <TouchableOpacity
             onPress={addToWishList}
@@ -50,7 +125,7 @@ const FeaturedCard = ({ item, wishlist, createWishList }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Product Image */}
+        {/* 🖼️ Product Image */}
         <View style={{ display: "flex", alignItems: "center" }}>
           <Image
             source={{ uri: item.image }}
@@ -59,7 +134,7 @@ const FeaturedCard = ({ item, wishlist, createWishList }) => {
           />
         </View>
 
-        {/* Product Info */}
+        {/* 📦 Product Info */}
         <View style={{ alignItems: "center", justifyContent: "center" }}>
           <Text style={styles.price}>ksh {item.price}</Text>
           <Text style={styles.title} numberOfLines={1}>
@@ -68,12 +143,41 @@ const FeaturedCard = ({ item, wishlist, createWishList }) => {
           <Text style={styles.size}>{item.size}</Text>
         </View>
 
-        {/* Add to Cart Button */}
+        {/* 🛒 Cart Section */}
         <View style={styles.addToCartContainer}>
-          <TouchableOpacity style={styles.addToCartButton}>
-            <Ionicons name="bag-handle-outline" size={24} color="#6CC51D" />
-            <Text style={{ fontSize: 15, fontWeight: "700" }}>Add to cart</Text>
-          </TouchableOpacity>
+          {isCart ? (
+            <View style={styles.cartItem}>
+              <TouchableOpacity onPress={handleDecrease}>
+                <Text
+                  style={[styles.cartText, { fontSize: 40, color: "green" }]}
+                >
+                  -
+                </Text>
+              </TouchableOpacity>
+              <Text style={styles.cartText}>{cartProduct?.quantity ?? 1}</Text>
+              <TouchableOpacity onPress={handleIncrease}>
+                <Text
+                  style={[styles.cartText, { fontSize: 40, color: "green" }]}
+                >
+                  +
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : adding ? (
+            <View style={styles.addToCartButton}>
+              <TypingDotsLoader label="Adding" textColor="green" />
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={styles.addToCartButton}
+              onPress={() => handleCart(item)}
+            >
+              <Ionicons name="bag-handle-outline" size={24} color="#6CC51D" />
+              <Text style={{ fontSize: 15, fontWeight: "700" }}>
+                Add to cart
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </View>
@@ -84,12 +188,12 @@ export default FeaturedCard;
 
 const styles = StyleSheet.create({
   card: {
-    width: width * 0.4,
     height: width * 0.7,
     elevation: 5,
     backgroundColor: "white",
     borderRadius: 10,
     overflow: "hidden",
+    marginBottom: 10,
   },
   container: {
     flex: 1,
@@ -133,5 +237,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     padding: 10,
+  },
+  cartItem: {
+    display: "flex",
+    width: "100%",
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+    padding: 1,
+  },
+  cartText: {
+    fontSize: 25,
+    fontWeight: "700",
   },
 });

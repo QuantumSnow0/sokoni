@@ -3,7 +3,7 @@ import "dotenv/config";
 export default {
   expo: {
     name: "sokoni",
-    slug: "sokoni",
+    slug: "sokoni-new", // Change slug to avoid conflicts
     version: "1.0.0",
     orientation: "portrait",
     icon: "./assets/images/icon.png",
@@ -19,8 +19,8 @@ export default {
         backgroundColor: "#ffffff",
       },
       edgeToEdgeEnabled: true,
-      googleServicesFile: "./google-services.json",
       package: "com.bonface254.sokoni",
+      googleServicesFile: "./google-services.json",
     },
     web: {
       bundler: "metro",
@@ -46,9 +46,8 @@ export default {
     extra: {
       router: {},
       eas: {
-        projectId: "526aef92-c194-4425-b61d-edb5b7683543",
+        projectId: "31cf5fc3-c686-42cf-a93c-3926b6baf582",
       },
-
       EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY:
         process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY,
     },

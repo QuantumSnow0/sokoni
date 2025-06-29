@@ -14,8 +14,10 @@ import {
   ActivityIndicator,
 } from "react-native";
 import React, { useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { COLORS } from "../../utils/color";
 import { Image } from "expo-image";
+import { useAuth } from "@clerk/clerk-expo";
 import { SIZES } from "../../utils/dimensions";
 import { Ionicons } from "@expo/vector-icons";
 const { width, height } = Dimensions.get("window");
@@ -27,6 +29,7 @@ export default function Page() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { getToken } = useAuth();
   // Handle the submission of the sign-in form
   const onSignInPress = async () => {
     if (!isLoaded) return;
@@ -42,6 +45,13 @@ export default function Page() {
       // and redirect the user
       if (signInAttempt.status === "complete") {
         await setActive({ session: signInAttempt.createdSessionId });
+        const token = await getToken({ template: "api_access" });
+        // console.log("✅ Token after verification:", token);
+
+        if (token) {
+          await AsyncStorage.clear(); // Clear old tokens first
+          await AsyncStorage.setItem("token", token);
+        }
         router.replace("/");
       } else {
         // If the status isn't complete, check why. User might need to

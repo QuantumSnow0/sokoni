@@ -19,18 +19,48 @@ import { categories } from "../../utils/category";
 import FeaturedCard from "../components/FeaturedCard";
 import { useProducts } from "../../hooks/useProducts";
 import { useWishList } from "../../hooks/useWishlist";
+import { usePushNotifications } from "../../hooks/usePushNotifications";
 import CustomToast from "../../components/CustomToast";
+import { useCart } from "../../hooks/useCart";
+import * as Notifications from "expo-notifications";
+
 const { width, height } = Dimensions.get("window");
 const cardSpacing = 20;
 const cardWidth = (width - cardSpacing * 3) / 2;
-
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 export default function HomeScreen() {
   const { user } = useUser();
   const { getToken } = useAuth();
   const [token, setToken] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  // ✅ Toast states
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const { expoPushToken } = usePushNotifications();
+  const showToast = (msg) => {
+    setToastMessage(msg);
+    setToastVisible(true);
+    setTimeout(() => setToastVisible(false), 2000);
+  };
+
   const { wishlist, createWishList, fetchWishlist } = useWishList(token);
   const { products, isLoading, fetchProducts } = useProducts(token);
+  const {
+    cart,
+    message,
+    loading,
+    fetchCart,
+    addToCart,
+    updateCartItem,
+    deleteCartItem,
+    clearCart,
+  } = useCart(token);
 
   useEffect(() => {
     const storeUserId = async () => {
@@ -41,7 +71,11 @@ export default function HomeScreen() {
     };
     storeUserId();
   }, [user]);
-
+  useEffect(() => {
+    if (expoPushToken) {
+      console.log("Expo Push Token:", expoPushToken);
+    }
+  }, [expoPushToken]);
   useEffect(() => {
     const fetchToken = async () => {
       try {
@@ -53,13 +87,13 @@ export default function HomeScreen() {
         console.error("Failed to fetch token:", error);
       }
     };
-
     fetchToken();
   }, []);
 
   useEffect(() => {
     if (token) {
       fetchProducts();
+      fetchCart();
     }
   }, [token]);
 
@@ -75,6 +109,9 @@ export default function HomeScreen() {
 
   return (
     <View style={{ flex: 1 }}>
+      {/* ✅ Global toast */}
+      <CustomToast visible={toastVisible} message={toastMessage} />
+
       {/* 🔍 Search Bar */}
       <View style={styles.fixedSearch}>
         <View style={styles.searchIcon}>
@@ -191,6 +228,7 @@ export default function HomeScreen() {
               wishlist={wishlist}
               createWishList={createWishList}
               isLoading={isLoading}
+              onAddToCartToast={showToast} // ✅ Pass the toast handler
             />
           )
         }

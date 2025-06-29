@@ -19,6 +19,7 @@ const CustomInput = ({
   placeholderTextColor = "gray",
   textColor = "black",
   onChangeText = { onChangeText },
+  keyboardType = "default",
   value = { value },
 }) => {
   const [hidePassword, setHidePassword] = useState(true);
@@ -48,6 +49,7 @@ const CustomInput = ({
           placeholderTextColor={placeholderTextColor}
           onChangeText={onChangeText}
           value={value}
+          keyboardType={keyboardType}
         />
       </View>
       {isPasswordVisible ? (
