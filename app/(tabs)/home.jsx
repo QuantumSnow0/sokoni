@@ -1,10 +1,11 @@
+import { SignedIn, SignedOut, useUser, useAuth } from "@clerk/clerk-expo";
 import {
-  SignedIn,
-  SignedOut,
-  useUser,
-  useAuth,
-} from "@clerk/clerk-expo";
-import { Ionicons } from "@expo/vector-icons";
+  Ionicons,
+  FontAwesome5,
+  MaterialCommunityIcons,
+  Entypo,
+  Feather,
+} from "@expo/vector-icons";
 import {
   StyleSheet,
   Text,
@@ -20,7 +21,6 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useState, useEffect, useRef } from "react";
-import { categories } from "../../utils/category";
 import FeaturedCard from "../components/FeaturedCard";
 import { useProducts } from "../../hooks/useProducts";
 import { useWishList } from "../../hooks/useWishlist";
@@ -29,6 +29,7 @@ import CustomToast from "../../components/CustomToast";
 import { useCart } from "../../hooks/useCart";
 import * as Notifications from "expo-notifications";
 import LottieView from "lottie-react-native";
+import { useCategories } from "../../hooks/useCategories"; // ✅ using categories hook
 
 const { width, height } = Dimensions.get("window");
 const cardSpacing = 20;
@@ -42,18 +43,18 @@ Notifications.setNotificationHandler({
   }),
 });
 
-const banners = [
-  { id: 1, uri: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTBtOw6VtgKsrKNXkcFy73IHWX8tocwQMrMvViLGOLfEDxv_IFiC9Hohdc&s=10" },
-  { id: 2, uri: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTBtOw6VtgKsrKNXkcFy73IHWX8tocwQMrMvViLGOLfEDxv_IFiC9Hohdc&s=10" },
-  { id: 3, uri: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTz8SdAoMG781gf0zI_n2D0W8DSjnUIjcaKbQ&usqp=CAU" },
-];
+const iconLibraries = {
+  Ionicons,
+  FontAwesome5,
+  MaterialCommunityIcons,
+  Entypo,
+  Feather,
+};
 
 function useDebouncedValue(value, delay) {
   const [debouncedValue, setDebouncedValue] = useState(value);
   useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
+    const handler = setTimeout(() => setDebouncedValue(value), delay);
     return () => clearTimeout(handler);
   }, [value, delay]);
   return debouncedValue;
@@ -62,6 +63,7 @@ function useDebouncedValue(value, delay) {
 export default function HomeScreen() {
   const { user } = useUser();
   const { getToken } = useAuth();
+  const { categories } = useCategories(); // ✅ live categories
   const [token, setToken] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -70,20 +72,36 @@ export default function HomeScreen() {
   const [showLottie, setShowLottie] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebouncedValue(searchQuery, 300);
-
+  const [selectedCategory, setSelectedCategory] = useState(null);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
+
   const { expoPushToken } = usePushNotifications();
+  const { wishlist, createWishList, fetchWishlist } = useWishList(token);
+  const { products, isLoading, fetchProducts } = useProducts(token);
+  const { cart, fetchCart, addToCart, updateCartItem, deleteCartItem } =
+    useCart(token);
+
+  const banners = [
+    {
+      id: 1,
+      uri: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTBtOw6VtgKsrKNXkcFy73IHWX8tocwQMrMvViLGOLfEDxv_IFiC9Hohdc&s=10",
+    },
+    {
+      id: 2,
+      uri: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTBtOw6VtgKsrKNXkcFy73IHWX8tocwQMrMvViLGOLfEDxv_IFiC9Hohdc&s=10",
+    },
+    {
+      id: 3,
+      uri: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTz8SdAoMG781gf0zI_n2D0W8DSjnUIjcaKbQ&usqp=CAU",
+    },
+  ];
 
   const showToast = (msg) => {
     setToastMessage(msg);
     setToastVisible(true);
     setTimeout(() => setToastVisible(false), 2000);
   };
-
-  const { wishlist, createWishList, fetchWishlist } = useWishList(token);
-  const { products, isLoading, fetchProducts } = useProducts(token);
-  const { cart, fetchCart, addToCart, updateCartItem, deleteCartItem } = useCart(token);
 
   useEffect(() => {
     const storeUserId = async () => {
@@ -99,9 +117,7 @@ export default function HomeScreen() {
     const fetchToken = async () => {
       try {
         const reqToken = await getToken({ template: "api_access" });
-        if (reqToken) {
-          setToken(reqToken);
-        }
+        if (reqToken) setToken(reqToken);
       } catch (error) {
         console.error("Failed to fetch token:", error);
       }
@@ -141,6 +157,16 @@ export default function HomeScreen() {
     return () => clearTimeout(timeout);
   }, []);
 
+  const filteredProducts = products.filter((p) => {
+    const matchesSearch = p.title
+      ?.toLowerCase()
+      .includes(debouncedSearch.toLowerCase());
+    const matchesCategory = selectedCategory
+      ? p.category?.toLowerCase() === selectedCategory.toLowerCase()
+      : true;
+    return matchesSearch && matchesCategory;
+  });
+
   return (
     <View style={{ flex: 1 }}>
       {showLottie && (
@@ -157,7 +183,7 @@ export default function HomeScreen() {
 
       <CustomToast visible={toastVisible} message={toastMessage} />
 
-      {/* 🔍 Search Bar (Always Visible) */}
+      {/* 🔍 Search */}
       <View style={styles.fixedSearch}>
         <View style={styles.searchIcon}>
           <View style={styles.searchBar}>
@@ -190,13 +216,7 @@ export default function HomeScreen() {
       </View>
 
       <FlatList
-        data={
-          isLoading
-            ? []
-            : products.filter((p) =>
-                p.title?.toLowerCase().includes(debouncedSearch.toLowerCase())
-              )
-        }
+        data={filteredProducts}
         keyExtractor={(item, index) => index.toString()}
         numColumns={2}
         columnWrapperStyle={{
@@ -209,62 +229,62 @@ export default function HomeScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         ListHeaderComponent={
-          debouncedSearch.trim() === "" ? (
-            <View style={{ paddingHorizontal: 20 }}>
-              <View style={{ height: 100 }} />
-              <FlatList
-                ref={bannerRef}
-                data={banners}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                onMomentumScrollEnd={(e) => {
-                  const index = Math.round(
-                    e.nativeEvent.contentOffset.x / width
-                  );
-                  setActiveIndex(index);
-                }}
-                renderItem={({ item }) => (
-                  <Image
-                    source={{ uri: item.uri }}
-                    style={{ width, height: height * 0.2 }}
-                    resizeMode="cover"
-                  />
-                )}
-              />
-              <View style={styles.dots}>
-                {banners.map((_, i) => (
-                  <View
-                    key={i}
-                    style={[
-                      styles.dot,
-                      {
-                        backgroundColor:
-                          i === activeIndex ? "#6CC51D" : "#ccc",
-                      },
-                    ]}
-                  />
-                ))}
-              </View>
-              <TouchableOpacity>
-                <View style={styles.cat}>
-                  <Text style={styles.sectionTitle}>Categories</Text>
-                  <Ionicons name="arrow-redo" size={28} color="black" />
-                </View>
-              </TouchableOpacity>
-              <FlatList
-                data={categories}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyExtractor={(item, index) => index.toString()}
-                renderItem={({ item, index }) => (
-                  <TouchableOpacity onPress={() => console.log(index)}>
+          <View style={{ paddingHorizontal: 20 }}>
+            <View style={{ height: 100 }} />
+            {/* 🔁 Banners */}
+            <FlatList
+              ref={bannerRef}
+              data={banners}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onMomentumScrollEnd={(e) => {
+                const index = Math.round(e.nativeEvent.contentOffset.x / width);
+                setActiveIndex(index);
+              }}
+              renderItem={({ item }) => (
+                <Image
+                  source={{ uri: item.uri }}
+                  style={{ width, height: height * 0.2 }}
+                  resizeMode="cover"
+                />
+              )}
+            />
+            <View style={styles.dots}>
+              {banners.map((_, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.dot,
+                    { backgroundColor: i === activeIndex ? "#6CC51D" : "#ccc" },
+                  ]}
+                />
+              ))}
+            </View>
+
+            {/* 🏷️ Categories */}
+            <View style={styles.cat}>
+              <Text style={styles.sectionTitle}>Categories</Text>
+            </View>
+
+            <FlatList
+              data={categories}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => {
+                const Icon = iconLibraries[item.icon_lib] || Ionicons;
+                const isSelected = selectedCategory === item.label;
+                return (
+                  <TouchableOpacity
+                    onPress={() =>
+                      setSelectedCategory((prev) =>
+                        prev === item.label ? null : item.label
+                      )
+                    }
+                  >
                     <View
-                      style={{
-                        alignItems: "center",
-                        marginRight: 20,
-                        gap: 4,
-                      }}
+                      style={{ alignItems: "center", marginRight: 20, gap: 4 }}
                     >
                       <View
                         style={{
@@ -273,29 +293,36 @@ export default function HomeScreen() {
                           borderRadius: 999,
                           justifyContent: "center",
                           alignItems: "center",
-                          backgroundColor: item.bgColor,
+                          backgroundColor: item.bg_color || "#eee",
+                          borderWidth: isSelected ? 2 : 0,
+                          borderColor: isSelected ? "#000" : "transparent",
                         }}
                       >
-                        <Image
-                          source={item.icon}
-                          style={{ width: 30, height: 30 }}
-                          resizeMode="contain"
-                        />
+                        <Icon name={item.icon} size={30} color="black" />
                       </View>
                       <Text style={styles.categoryLabel}>{item.label}</Text>
                     </View>
                   </TouchableOpacity>
-                )}
-                contentContainerStyle={{ paddingVertical: 10 }}
-              />
-              <TouchableOpacity>
-                <View style={styles.cat}>
-                  <Text style={styles.sectionTitle}>Featured Products</Text>
-                  <Ionicons name="arrow-redo" size={28} color="black" />
-                </View>
+                );
+              }}
+              contentContainerStyle={{ paddingVertical: 10 }}
+            />
+
+            {selectedCategory && (
+              <TouchableOpacity
+                onPress={() => setSelectedCategory(null)}
+                style={{ marginBottom: 10 }}
+              >
+                <Text style={{ color: "blue", fontSize: 16 }}>
+                  Clear Category Filter
+                </Text>
               </TouchableOpacity>
+            )}
+
+            <View style={styles.cat}>
+              <Text style={styles.sectionTitle}>Featured Products</Text>
             </View>
-          ) : null
+          </View>
         }
         renderItem={({ item }) =>
           !isLoading && (
@@ -318,9 +345,9 @@ export default function HomeScreen() {
           )
         }
         contentContainerStyle={{
-  paddingBottom: 100,
-  ...(debouncedSearch.trim() !== "" && { marginTop: 100 }),
-}}
+          paddingBottom: 100,
+          ...(debouncedSearch.trim() !== "" && { marginTop: 100 }),
+        }}
       />
     </View>
   );

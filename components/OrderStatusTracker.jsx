@@ -6,24 +6,19 @@ const OrderStatusTracker = ({ steps }) => {
     <View style={styles.container}>
       {steps.map((step, index) => {
         const isLast = index === steps.length - 1;
+
         const isDone = step.status === "done";
+        const isFailed = step.status === "failed";
+
+        const dotColor = isFailed ? "#FF4D4F" : isDone ? "#6CC51D" : "#ccc";
+        const lineColor = isFailed ? "#FF4D4F" : isDone ? "#6CC51D" : "#ccc";
 
         return (
           <View key={index} style={styles.stepContainer}>
             <View style={styles.iconColumn}>
-              <View
-                style={[
-                  styles.circle,
-                  { backgroundColor: isDone ? "#6CC51D" : "#ccc" },
-                ]}
-              />
+              <View style={[styles.circle, { backgroundColor: dotColor }]} />
               {!isLast && (
-                <View
-                  style={[
-                    styles.line,
-                    { backgroundColor: isDone ? "#6CC51D" : "#ccc" },
-                  ]}
-                />
+                <View style={[styles.line, { backgroundColor: lineColor }]} />
               )}
             </View>
 
@@ -33,9 +28,10 @@ const OrderStatusTracker = ({ steps }) => {
                 style={[
                   styles.date,
                   step.status === "pending" && { color: "gray" },
+                  isFailed && { color: "#FF4D4F" },
                 ]}
               >
-                {step.date === "pending" ? "Pending" : step.date}
+                {step.date === "Pending" ? "Pending" : step.date}
               </Text>
             </View>
           </View>
@@ -83,7 +79,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontWeight: "600",
-    fontSize: 20,
+    fontSize: 18,
     flex: 1,
   },
   date: {

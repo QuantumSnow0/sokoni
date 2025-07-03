@@ -6,18 +6,20 @@ import {
   View,
   ActivityIndicator,
 } from "react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import OrdersItem from "../../components/OrdersItem";
-import { useOrder } from "../../hooks/useOrders"; // make sure this path is correct
+import { useOrder } from "../../hooks/useOrders";
+import socket from "../../utils/socket";
 
 const Orders = () => {
   const [token, setToken] = useState("");
   const router = useRouter();
 
+  // Step 1: Get token
   useEffect(() => {
     const getToken = async () => {
       const t = await AsyncStorage.getItem("token");
@@ -28,13 +30,35 @@ const Orders = () => {
     getToken();
   }, []);
 
-  const { orders, loading, orderError, fetchOrders } = useOrder(token);
+  // Step 2: Fetch orders
+  const { orders, setOrders, loading, orderError, fetchOrders } =
+    useOrder(token);
 
   useEffect(() => {
     if (token) {
       fetchOrders();
     }
   }, [token]);
+
+  // Step 3: Live socket updates
+  useEffect(() => {
+    if (!token) return;
+
+    const handleStatusUpdate = ({ orderId, status }) => {
+      console.log(`✅ Order ${orderId} updated to "${status}"`);
+      setOrders((prevOrders) =>
+        prevOrders.map((order) =>
+          order.id === parseInt(orderId) ? { ...order, status } : order
+        )
+      );
+    };
+
+    socket.on("order:status:updated", handleStatusUpdate);
+
+    return () => {
+      socket.off("order:status:updated", handleStatusUpdate);
+    };
+  }, [token, setOrders]);
 
   return (
     <KeyboardAwareScrollView
@@ -69,7 +93,7 @@ const Orders = () => {
         </Text>
       ) : (
         <FlatList
-          data={orders}
+          data={orders.filter((order) => order && Array.isArray(order.items))}
           keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }) => <OrdersItem data={item} />}
           scrollEnabled={false}

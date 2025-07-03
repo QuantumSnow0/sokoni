@@ -92,11 +92,11 @@ export default function CheckoutScreen() {
   };
 
   const handleCheckout = async () => {
+    console.log("am here");
     if (!selectedAddress) {
       alert("Please select or add a shipping address");
       return;
     }
-
     console.log("Shipping address ID sent to backend:", selectedAddress);
     try {
       const response = await createOrder({

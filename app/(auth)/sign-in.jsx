@@ -20,7 +20,9 @@ import { Image } from "expo-image";
 import { useAuth } from "@clerk/clerk-expo";
 import { SIZES } from "../../utils/dimensions";
 import { Ionicons } from "@expo/vector-icons";
+
 const { width, height } = Dimensions.get("window");
+
 export default function Page() {
   const { signIn, setActive, isLoaded } = useSignIn();
   const router = useRouter();
@@ -30,39 +32,31 @@ export default function Page() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { getToken } = useAuth();
-  // Handle the submission of the sign-in form
+
+  const sanitizeInput = (text) => text.replace(/\s/g, "");
+
   const onSignInPress = async () => {
     if (!isLoaded) return;
     setIsLoading(true);
-    // Start the sign-in process using the email and password provided
     try {
       const signInAttempt = await signIn.create({
-        identifier: emailAddress,
-        password,
+        identifier: emailAddress.trim().toLowerCase(),
+        password: password.trim(),
       });
 
-      // If sign-in process is complete, set the created session as active
-      // and redirect the user
       if (signInAttempt.status === "complete") {
         await setActive({ session: signInAttempt.createdSessionId });
         const token = await getToken({ template: "api_access" });
-        // console.log("✅ Token after verification:", token);
 
         if (token) {
-          await AsyncStorage.clear(); // Clear old tokens first
+          await AsyncStorage.clear();
           await AsyncStorage.setItem("token", token);
         }
         router.replace("/");
       } else {
-        // If the status isn't complete, check why. User might need to
-        // complete further steps.
         console.error(JSON.stringify(signInAttempt, null, 2));
       }
     } catch (err) {
-      // See https://clerk.com/docs/custom-flows/error-handling
-      // for more info on error handling
-      //console.error(JSON.stringify(err, null, 2));
-
       setError(err?.errors?.[0].longMessage);
       console.log(err);
     } finally {
@@ -100,7 +94,8 @@ export default function Page() {
                 Sign in to your account
               </Text>
             </View>
-            {/* input field */}
+
+            {/* Input Fields */}
             <View
               style={{
                 display: "flex",
@@ -111,7 +106,7 @@ export default function Page() {
                 gap: 10,
               }}
             >
-              {/* email input */}
+              {/* Email input */}
               <View
                 style={{
                   display: "flex",
@@ -130,12 +125,18 @@ export default function Page() {
                 />
                 <TextInput
                   value={emailAddress}
-                  onChangeText={setEmailAddress}
+                  onChangeText={(text) =>
+                    setEmailAddress(sanitizeInput(text).toLowerCase())
+                  }
+                  autoCapitalize="none"
+                  autoCorrect={false}
                   style={[styles.textInput]}
                   placeholder="Email Address"
+                  keyboardType="email-address"
                 />
               </View>
-              {/* password input */}
+
+              {/* Password input */}
               <View
                 style={{
                   display: "flex",
@@ -155,16 +156,15 @@ export default function Page() {
                 />
                 <TextInput
                   value={password}
-                  onChangeText={setPassword}
-                  style={[styles.textInput, { width: "70%", letterSpacing: 2 }]}
+                  onChangeText={(text) => setPassword(sanitizeInput(text))}
                   secureTextEntry={!showPassword}
-                  placeholder="password"
+                  style={[styles.textInput, { width: "70%", letterSpacing: 2 }]}
+                  placeholder="Password"
+                  autoCapitalize="none"
                 />
                 <TouchableWithoutFeedback
                   style={{ position: "absolute" }}
-                  onPress={() => {
-                    setShowPassword(!showPassword);
-                  }}
+                  onPress={() => setShowPassword(!showPassword)}
                 >
                   <Ionicons
                     name={showPassword ? "eye-outline" : "eye-off-outline"}
@@ -175,6 +175,7 @@ export default function Page() {
                 </TouchableWithoutFeedback>
               </View>
             </View>
+
             <View
               style={{
                 display: "flex",
@@ -193,20 +194,20 @@ export default function Page() {
                 </Text>
               </TouchableWithoutFeedback>
             </View>
+
             <TouchableOpacity
               style={styles.startButton}
-              onPress={() => {
-                onSignInPress();
-              }}
+              onPress={onSignInPress}
               disabled={isLoading}
             >
-              {" "}
               {isLoading ? (
                 <ActivityIndicator size={"large"} color={"white"} />
               ) : (
                 <Text style={styles.startText}>Log In</Text>
               )}
             </TouchableOpacity>
+
+            {/* Error */}
             <View style={{ marginTop: 16 }}>
               {error && (
                 <View
@@ -225,6 +226,8 @@ export default function Page() {
                 </View>
               )}
             </View>
+
+            {/* Sign Up */}
             <View
               style={{
                 display: "flex",
@@ -236,17 +239,18 @@ export default function Page() {
               }}
             >
               <Text
-                style={{ fontSize: width * 0.05, color: "rgba( 0, 0, 0, 0.5)" }}
+                style={{
+                  fontSize: width * 0.05,
+                  color: "rgba( 0, 0, 0, 0.5)",
+                }}
               >
-                {" "}
                 Don't have an account ?
               </Text>
               <TouchableWithoutFeedback onPress={() => router.push("/sign-up")}>
                 <Text
                   style={{
                     fontSize: width * 0.05,
-                    color: "rgba( 0, 0, 0, 0.5)",
-                    color: "rgba(0, 0, 0)",
+                    color: "black",
                     fontWeight: "600",
                   }}
                 >
@@ -260,6 +264,7 @@ export default function Page() {
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,

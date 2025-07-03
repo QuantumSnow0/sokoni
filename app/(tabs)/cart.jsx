@@ -23,7 +23,7 @@ export default function CartScreen() {
   const [token, setToken] = useState("");
   const router = useRouter();
   const [subtotal, setSubtotal] = useState(0);
-  const SHIPPING = 100;
+  const SHIPPING = 0;
 
   const { cart, cartLoading, fetchCart, updateCartItem, deleteCartItem } =
     useCart(token);

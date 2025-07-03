@@ -15,13 +15,15 @@ import { Image } from "expo-image";
 import { SIZES } from "../../utils/dimensions";
 import { useAuth } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
-import { useSignUp, useUser } from "@clerk/clerk-expo";
-import { Link, useRouter } from "expo-router";
+import { useSignUp } from "@clerk/clerk-expo";
+import { useRouter } from "expo-router";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { useState } from "react";
 import { useUsers } from "../../hooks/useUser";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
 const { width, height } = Dimensions.get("window");
+
 export default function SignUpScreen() {
   const { registerUser } = useUsers();
   const { isLoaded, signUp, setActive } = useSignUp();
@@ -37,55 +39,33 @@ export default function SignUpScreen() {
   const [error, setError] = useState("");
   const [verifyError, setVerifyError] = useState("");
   const { getToken } = useAuth();
-  // Handle submission of sign-up form
+
   const onSignUpPress = async () => {
     if (!isLoaded) return;
-
-    // Start sign-up process using email and password provided
     if (!phone) return setError("phone number required");
     setLoading(true);
     try {
-      await signUp.create({
-        emailAddress,
-        password,
-      });
-
-      // Send user an email with verification code
+      await signUp.create({ emailAddress, password });
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-
-      // Set 'pendingVerification' to true to display second form
-      // and capture OTP code
       setPendingVerification(true);
     } catch (err) {
-      // See https://clerk.com/docs/custom-flows/error-handling
-      // for more info on error handling
       setError(err?.errors?.[0].longMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle submission of verification form
   const onVerifyPress = async () => {
     if (!isLoaded) return;
-
     try {
-      // Use the code the user provided to attempt verification
       const signUpAttempt = await signUp.attemptEmailAddressVerification({
         code,
       });
-
-      // If verification was completed, set the session to active
-      // and redirect the user
       if (signUpAttempt.status === "complete") {
         await setActive({ session: signUpAttempt.createdSessionId });
-        console.log("am here");
         const token = await getToken({ template: "api_access" });
-        console.log("✅ Token after verification:", token);
-
         if (token) {
-          console.log("now am here");
-          await AsyncStorage.clear(); // Clear old tokens first
+          await AsyncStorage.clear();
           await AsyncStorage.setItem("token", token);
           await registerUser(
             token,
@@ -93,31 +73,20 @@ export default function SignUpScreen() {
             emailAddress.split("@")[0],
             phone
           );
-          console.log("the end");
         }
-        //registerUser(emailAddress, emailAddress.split("@")[0], phone);
         router.replace("/");
       } else {
-        // If the status is not complete, check why. User may need to
-        // complete further steps.
         console.error(JSON.stringify(signUpAttempt, null, 2));
       }
     } catch (err) {
-      // See https://clerk.com/docs/custom-flows/error-handling
-      // for more info on error handling
-      console.log("error verifying user :", err);
+      console.log("error verifying user:", err);
       setVerifyError(err?.errors?.[0].longMessage);
     }
   };
 
   if (pendingVerification) {
     return (
-      <View
-        style={{
-          flex: 1,
-          padding: SIZES.containerPadding,
-        }}
-      >
+      <View style={{ flex: 1, padding: SIZES.containerPadding }}>
         <KeyboardAwareScrollView
           style={{ flex: 1, backgroundColor: "#f0f0ee" }}
           contentContainerStyle={{
@@ -133,7 +102,6 @@ export default function SignUpScreen() {
         >
           <Image
             source={require("../../assets/images/encrypted.png")}
-            alt="logo"
             style={{
               width: width * 0.5,
               height: width * 0.5,
@@ -141,55 +109,19 @@ export default function SignUpScreen() {
             }}
           />
           {verifyError && (
-            <View
-              style={{
-                display: "flex",
-                flexDirection: "row",
-                gap: 3,
-                alignItems: "center",
-                borderWidth: 2,
-                padding: 5,
-                borderLeftWidth: 10,
-                borderRadius: 10,
-                borderColor: "red",
-                flexWrap: "wrap",
-                marginVertical: 5,
-              }}
-            >
+            <View style={styles.errorBox}>
               <Ionicons name="warning" size={22} color={"red"} />
-              <Text style={{ color: "red", fontSize: width * 0.04, flex: 1 }}>
-                {verifyError}
-              </Text>
+              <Text style={styles.errorText}>{verifyError}</Text>
             </View>
           )}
-
-          <Text
-            style={{
-              fontSize: width * 0.07,
-              fontWeight: 900,
-              marginVertical: 7,
-            }}
-          >
-            Verify your email
-          </Text>
+          <Text style={styles.header}>Verify your email</Text>
           <TextInput
             value={code}
-            onChangeText={(code) => setCode(code)}
-            style={[
-              styles.textInput,
-              {
-                width: "70%",
-                letterSpacing: 2,
-                borderWidth: 2,
-                borderColor: "rgba (0, 0, 0, 0.1)",
-                paddingHorizontal: 10,
-                borderRadius: 10,
-              },
-            ]}
+            onChangeText={(text) => setCode(text.replace(/\s/g, ""))}
+            style={[styles.textInput, styles.verificationInput]}
             secureTextEntry={!showPassword}
             placeholder="verification code"
           />
-
           <TouchableOpacity style={styles.startButton} onPress={onVerifyPress}>
             <Text style={styles.startText}>Verify</Text>
           </TouchableOpacity>
@@ -218,39 +150,11 @@ export default function SignUpScreen() {
             style={styles.main}
             contentContainerStyle={{ paddingBottom: 10, flexGrow: 1 }}
           >
-            <View style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-              <Text style={{ fontSize: width * 0.07, fontWeight: 800 }}>
-                Create Account
-              </Text>
-              <Text
-                style={{ fontSize: width * 0.05, color: "rgba(0, 0, 0, 0.5)" }}
-              >
-                Quickly create account
-              </Text>
-            </View>
-            {/* input field */}
-            <View
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                width: width * 0.9,
-                margin: 10,
-                paddingRight: 10,
-                gap: 10,
-              }}
-            >
-              {/* email input */}
-              <View
-                style={{
-                  display: "flex",
-                  flexDirection: "row",
-                  gap: 6,
-                  alignItems: "center",
-                  backgroundColor: "white",
-                  padding: 5,
-                  borderRadius: 20,
-                }}
-              >
+            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.subtitle}>Quickly create account</Text>
+
+            <View style={styles.inputGroup}>
+              <View style={styles.inputRow}>
                 <Ionicons
                   name="mail-outline"
                   size={width * 0.09}
@@ -258,23 +162,14 @@ export default function SignUpScreen() {
                 />
                 <TextInput
                   value={emailAddress}
-                  onChangeText={setEmailAddress}
-                  style={[styles.textInput]}
+                  onChangeText={(text) =>
+                    setEmailAddress(text.replace(/\s/g, "").toLowerCase())
+                  }
+                  style={styles.textInput}
                   placeholder="Email Address"
                 />
               </View>
-              {/* phone input */}
-              <View
-                style={{
-                  display: "flex",
-                  flexDirection: "row",
-                  gap: 6,
-                  alignItems: "center",
-                  backgroundColor: "white",
-                  padding: 5,
-                  borderRadius: 20,
-                }}
-              >
+              <View style={styles.inputRow}>
                 <Ionicons
                   name="call-outline"
                   size={width * 0.09}
@@ -282,25 +177,13 @@ export default function SignUpScreen() {
                 />
                 <TextInput
                   value={phone}
-                  onChangeText={setPhone}
-                  style={[styles.textInput]}
+                  onChangeText={(text) => setPhone(text.replace(/\D/g, ""))}
+                  style={styles.textInput}
                   placeholder="Phone number"
                   keyboardType="numeric"
                 />
               </View>
-              {/* password input */}
-              <View
-                style={{
-                  display: "flex",
-                  flexDirection: "row",
-                  gap: 6,
-                  alignItems: "center",
-                  backgroundColor: "white",
-                  padding: 10,
-                  borderRadius: 20,
-                  position: "relative",
-                }}
-              >
+              <View style={[styles.inputRow, { position: "relative" }]}>
                 <Ionicons
                   name="lock-closed-outline"
                   size={width * 0.09}
@@ -308,16 +191,13 @@ export default function SignUpScreen() {
                 />
                 <TextInput
                   value={password}
-                  onChangeText={setPassword}
+                  onChangeText={(text) => setPassword(text.replace(/\s/g, ""))}
                   style={[styles.textInput, { width: "70%", letterSpacing: 2 }]}
                   secureTextEntry={!showPassword}
                   placeholder="password"
                 />
                 <TouchableWithoutFeedback
-                  style={{ position: "absolute" }}
-                  onPress={() => {
-                    setShowPassword(!showPassword);
-                  }}
+                  onPress={() => setShowPassword(!showPassword)}
                 >
                   <Ionicons
                     name={showPassword ? "eye-outline" : "eye-off-outline"}
@@ -328,72 +208,30 @@ export default function SignUpScreen() {
                 </TouchableWithoutFeedback>
               </View>
             </View>
-            <View
-              style={{
-                display: "flex",
-                alignItems: "flex-end",
-                marginTop: 2,
-                marginRight: 5,
-              }}
-            ></View>
+
             <TouchableOpacity
               style={styles.startButton}
-              onPress={() => {
-                onSignUpPress();
-              }}
+              onPress={onSignUpPress}
               disabled={loading}
             >
               {loading ? (
-                <ActivityIndicator size={"large"} color={"white"} />
+                <ActivityIndicator size="large" color="white" />
               ) : (
                 <Text style={styles.startText}>Create an account</Text>
               )}
             </TouchableOpacity>
-            <View style={{ marginTop: 16 }}>
-              {error && (
-                <View
-                  style={{
-                    display: "flex",
-                    flexDirection: "row",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    gap: 5,
-                  }}
-                >
-                  <Ionicons name="warning-outline" size={24} color="red" />
-                  <Text style={{ fontSize: width * 0.06, color: "red" }}>
-                    {error}
-                  </Text>
-                </View>
-              )}
-            </View>
-            <View
-              style={{
-                display: "flex",
-                flexDirection: "row",
-                gap: 2,
-                alignItems: "center",
-                justifyContent: "center",
-                marginTop: 10,
-              }}
-            >
-              <Text
-                style={{ fontSize: width * 0.05, color: "rgba( 0, 0, 0, 0.5)" }}
-              >
-                {" "}
-                Already have an account ?
-              </Text>
+
+            {error && (
+              <View style={styles.errorBox}>
+                <Ionicons name="warning-outline" size={24} color="red" />
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            )}
+
+            <View style={styles.bottomTextRow}>
+              <Text style={styles.bottomText}>Already have an account?</Text>
               <TouchableWithoutFeedback onPress={() => router.push("/sign-in")}>
-                <Text
-                  style={{
-                    fontSize: width * 0.05,
-                    color: "rgba( 0, 0, 0, 0.5)",
-                    color: "rgba(0, 0, 0)",
-                    fontWeight: "600",
-                  }}
-                >
-                  Log In
-                </Text>
+                <Text style={styles.loginLink}>Log In</Text>
               </TouchableWithoutFeedback>
             </View>
           </ScrollView>
@@ -402,11 +240,11 @@ export default function SignUpScreen() {
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: COLORS.background,
-    padding: SIZES.containerPadding,
     padding: 0,
   },
   startButton: {
@@ -441,5 +279,70 @@ const styles = StyleSheet.create({
   textInput: {
     fontSize: width * 0.05,
     width: "100%",
+  },
+  inputGroup: {
+    display: "flex",
+    flexDirection: "column",
+    width: width * 0.9,
+    margin: 10,
+    paddingRight: 10,
+    gap: 10,
+  },
+  inputRow: {
+    display: "flex",
+    flexDirection: "row",
+    gap: 6,
+    alignItems: "center",
+    backgroundColor: "white",
+    padding: 5,
+    borderRadius: 20,
+  },
+  errorBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    padding: 5,
+    marginTop: 16,
+  },
+  errorText: {
+    fontSize: width * 0.06,
+    color: "red",
+  },
+  bottomTextRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+    gap: 2,
+  },
+  bottomText: {
+    fontSize: width * 0.05,
+    color: "rgba(0, 0, 0, 0.5)",
+  },
+  loginLink: {
+    fontSize: width * 0.05,
+    color: "rgba(0, 0, 0)",
+    fontWeight: "600",
+  },
+  header: {
+    fontSize: width * 0.07,
+    fontWeight: "900",
+    marginVertical: 7,
+  },
+  verificationInput: {
+    width: "70%",
+    letterSpacing: 2,
+    borderWidth: 2,
+    borderColor: "rgba(0, 0, 0, 0.1)",
+    paddingHorizontal: 10,
+    borderRadius: 10,
+  },
+  title: {
+    fontSize: width * 0.07,
+    fontWeight: "800",
+  },
+  subtitle: {
+    fontSize: width * 0.05,
+    color: "rgba(0, 0, 0, 0.5)",
   },
 });

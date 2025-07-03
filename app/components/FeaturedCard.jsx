@@ -23,6 +23,10 @@ const FeaturedCard = ({
 }) => {
   const [like, setLike] = useState(false);
   const [token, setToken] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [cartProduct, setCartProduct] = useState(null);
+  const [isCart, setIsCart] = useState(false);
+
   const {
     cart,
     cartLoading,
@@ -31,11 +35,7 @@ const FeaturedCard = ({
     updateCartItem,
     deleteCartItem,
   } = useCart(token);
-  const [adding, setAdding] = useState(false);
-  const [cartProduct, setCartProduct] = useState(null);
-  const [isCart, setIsCart] = useState(false);
 
-  // 🔐 Load Token from Storage
   useEffect(() => {
     const getToken = async () => {
       const t = await AsyncStorage.getItem("token");
@@ -45,13 +45,13 @@ const FeaturedCard = ({
     };
     getToken();
   }, []);
+
   useEffect(() => {
     if (token) {
       fetchCart();
     }
   }, [token]);
 
-  // 🛒 Check if product is in cart and store quantity
   useEffect(() => {
     const inCart = cart.some((p) => p.product_id === item.id);
     setIsCart(inCart);
@@ -60,58 +60,84 @@ const FeaturedCard = ({
     setCartProduct(current || null);
   }, [cart, item.id]);
 
-  // ❤️ Check if in wishlist
   useEffect(() => {
     const isInWishlist = wishlist.some((product) => product.id === item.id);
     setLike(isInWishlist);
   }, [wishlist, item.id]);
 
-  // ❤️ Toggle Wishlist
   const addToWishList = async () => {
     setLike(!like);
     await createWishList(item.id);
   };
 
-  // ➕ Add to Cart
   const handleCart = async (product) => {
+    if (product.stock < 1) {
+      onAddToCartToast?.("❌ Out of stock!");
+      return;
+    }
+
     setAdding(true);
+
+    const tempCartProduct = {
+      id: "temp",
+      product_id: product.id,
+      quantity: 1,
+    };
+
+    setCartProduct(tempCartProduct);
+    setIsCart(true);
+
     try {
       await addToCart(product.id);
-      if (onAddToCartToast) {
-        onAddToCartToast(`${product.title} added to cart`);
-      }
+      onAddToCartToast?.(`✅ ${product.title} added to cart`);
     } catch (error) {
       console.log("❌ Error adding to cart:", error);
+      setIsCart(false);
+      setCartProduct(null);
+      onAddToCartToast?.("❌ Failed to add. Try again.");
     } finally {
       setAdding(false);
     }
   };
 
-  // ➖ Decrease Quantity or Remove
   const handleDecrease = () => {
     if (cartProduct?.quantity > 1) {
-      updateCartItem(cartProduct.id, cartProduct.quantity - 1);
+      const newQty = cartProduct.quantity - 1;
+      setCartProduct({ ...cartProduct, quantity: newQty });
+      updateCartItem(cartProduct.id, newQty).catch(() =>
+        onAddToCartToast?.("❌ Failed to update cart")
+      );
     } else {
-      deleteCartItem(cartProduct.id);
+      deleteCartItem(cartProduct.id).then(() => {
+        setCartProduct(null);
+        setIsCart(false);
+      });
     }
   };
 
-  // ➕ Increase Quantity
   const handleIncrease = () => {
-    updateCartItem(cartProduct.id, cartProduct.quantity + 1);
+    if (cartProduct?.quantity >= item.stock) {
+      onAddToCartToast?.("❌ Cannot add more — stock limit reached.");
+      return;
+    }
+
+    const newQty = cartProduct.quantity + 1;
+    setCartProduct({ ...cartProduct, quantity: newQty });
+
+    updateCartItem(cartProduct.id, newQty).catch(() => {
+      onAddToCartToast?.("❌ Failed to update cart");
+    });
   };
 
   return (
-    <View style={[styles.card, { width: cardWidth }]}>
+    <TouchableOpacity style={[styles.card, { width: cardWidth }]}>
       <View style={styles.container}>
-        {/* 🔖 Discount Badge */}
         {item.discount !== 0 && (
           <View style={styles.discountBadge}>
             <Text style={styles.discountText}>-{item.discount}%</Text>
           </View>
         )}
 
-        {/* ❤️ Wishlist Icon */}
         <View style={{ padding: 7 }}>
           <TouchableOpacity
             onPress={addToWishList}
@@ -125,8 +151,7 @@ const FeaturedCard = ({
           </TouchableOpacity>
         </View>
 
-        {/* 🖼️ Product Image */}
-        <View style={{ display: "flex", alignItems: "center" }}>
+        <View style={{ alignItems: "center" }}>
           <Image
             source={{ uri: item.image }}
             style={{ width: width * 0.3, height: width * 0.2 }}
@@ -134,7 +159,6 @@ const FeaturedCard = ({
           />
         </View>
 
-        {/* 📦 Product Info */}
         <View style={{ alignItems: "center", justifyContent: "center" }}>
           <Text style={styles.price}>ksh {item.price}</Text>
           <Text style={styles.title} numberOfLines={1}>
@@ -143,7 +167,6 @@ const FeaturedCard = ({
           <Text style={styles.size}>{item.size}</Text>
         </View>
 
-        {/* 🛒 Cart Section */}
         <View style={styles.addToCartContainer}>
           {isCart ? (
             <View style={styles.cartItem}>
@@ -167,6 +190,19 @@ const FeaturedCard = ({
             <View style={styles.addToCartButton}>
               <TypingDotsLoader label="Adding" textColor="green" />
             </View>
+          ) : item.stock === 0 || item.stock < 1 ? (
+            <View style={styles.addToCartButton}>
+              <Text
+                style={{
+                  fontSize: 15,
+                  fontWeight: "700",
+                  color: "red",
+                  textDecorationLine: "line-through",
+                }}
+              >
+                Out of stock
+              </Text>
+            </View>
           ) : (
             <TouchableOpacity
               style={styles.addToCartButton}
@@ -180,7 +216,7 @@ const FeaturedCard = ({
           )}
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 
@@ -239,7 +275,6 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   cartItem: {
-    display: "flex",
     width: "100%",
     flexDirection: "row",
     justifyContent: "space-around",

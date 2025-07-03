@@ -3,13 +3,15 @@ import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import OrderStatusTracker from "../components/OrderStatusTracker";
 
-// Map statuses from backend to tracker steps
+// Define status steps in correct flow
 const statusSteps = [
-  "placed", // Order created
-  "confirmed", // Order accepted by admin/seller
-  "shipped", // Sent out
+  "placed",
+  "confirmed",
   "out_for_delivery",
+  "shipped",
   "delivered",
+  "cancelled",
+  "rejected",
 ];
 
 const OrdersItem = ({ data }) => {
@@ -18,14 +20,28 @@ const OrdersItem = ({ data }) => {
   const itemCount = data.items?.reduce((sum, item) => sum + item.quantity, 0);
   const createdDate = new Date(data.created_at).toDateString();
 
-  const currentStatusIndex = statusSteps.indexOf(data.status?.toLowerCase());
+  const currentStatus = data.status?.toLowerCase();
+  const currentStatusIndex = statusSteps.indexOf(currentStatus);
 
-  // Dynamically construct the steps
-  const steps = statusSteps.map((label, index) => ({
-    label: label.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()), // Format labels
-    date: index <= currentStatusIndex ? createdDate : "Pending",
-    status: index <= currentStatusIndex ? "done" : "pending",
-  }));
+  const isFinalFailure =
+    currentStatus === "cancelled" || currentStatus === "rejected";
+
+  const steps = statusSteps.map((label, index) => {
+    let stepStatus = "pending";
+    if (index < currentStatusIndex) {
+      stepStatus = "done";
+    } else if (index === currentStatusIndex) {
+      stepStatus = isFinalFailure ? "failed" : "done";
+    } else if (isFinalFailure) {
+      stepStatus = "failed";
+    }
+
+    return {
+      label: label.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()),
+      date: index <= currentStatusIndex ? createdDate : "Pending",
+      status: stepStatus,
+    };
+  });
 
   return (
     <View style={{ paddingTop: 30, paddingHorizontal: 15 }}>

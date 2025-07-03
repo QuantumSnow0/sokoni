@@ -1,13 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { api } from "../utils/api";
-import { io } from "socket.io-client";
-
+import socket from "../utils/socket";
 const ordersRoute = `${api}/api/orders`;
-const socket = io(ordersRoute, {
-  transports: ["websocket"],
-  autoConnect: true,
-});
-
 export const useOrder = (token) => {
   const [orders, setOrders] = useState([]);
   const [singleOrder, setSingleOrder] = useState(null);
@@ -38,7 +32,7 @@ export const useOrder = (token) => {
     }
   }, [token]);
 
-  // 🔍 Fetch a single order (memoized)
+  // 🔍 Fetch a single order
   const fetchOrderById = useCallback(
     async (id) => {
       setLoading(true);
@@ -92,14 +86,14 @@ export const useOrder = (token) => {
         }
 
         const data = await res.json();
-        console.log("✅ Order created:", data); // <--- ADD THIS FOR DEBUGGING
+        console.log("✅ Order created:", data);
         setCheckoutSuccess(true);
-        fetchOrders(); // Optional refresh
+        fetchOrders(); // Refresh orders
         return data;
       } catch (err) {
         setOrderError("Checkout failed");
         console.error("createOrder error:", err);
-        return null; // prevent undefined return
+        return null;
       } finally {
         setLoading(false);
       }
@@ -107,7 +101,7 @@ export const useOrder = (token) => {
     [token, fetchOrders]
   );
 
-  // 🔔 Socket listener for live updates
+  // 🔔 Live socket listeners
   useEffect(() => {
     if (!token) return;
 
@@ -116,15 +110,27 @@ export const useOrder = (token) => {
       fetchOrders();
     };
 
+    const onOrderStatusUpdated = ({ orderId, status }) => {
+      console.log("Order status updated via socket:", orderId, status);
+      setOrders((prev) =>
+        prev.map((order) =>
+          order.id === parseInt(orderId) ? { ...order, status } : order
+        )
+      );
+    };
+
     socket.on("order:created", onOrderCreated);
+    socket.on("order:status:updated", onOrderStatusUpdated);
 
     return () => {
       socket.off("order:created", onOrderCreated);
+      socket.off("order:status:updated", onOrderStatusUpdated);
     };
   }, [token, fetchOrders]);
 
   return {
     orders,
+    setOrders,
     singleOrder,
     fetchOrders,
     fetchOrderById,
