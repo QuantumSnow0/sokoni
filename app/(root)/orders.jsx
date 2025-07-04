@@ -72,7 +72,7 @@ const Orders = () => {
           <Ionicons name="arrow-back" size={30} color="black" />
         </TouchableOpacity>
         <Text style={{ fontSize: 20, fontWeight: "700" }}>My Orders</Text>
-        <TouchableOpacity onPress={() => router.push("/addAddress")}>
+        <TouchableOpacity onPress={() => router.push("/cart")}>
           <Ionicons name="add-circle-outline" size={30} color="black" />
         </TouchableOpacity>
       </View>

@@ -147,9 +147,9 @@ export default function OrderConfirmationScreen() {
 
       <TouchableOpacity
         style={styles.button}
-        onPress={() => router.push("/home")}
+        onPress={() => router.push("/orders")}
       >
-        <Text style={styles.buttonText}>Continue Shopping</Text>
+        <Text style={styles.buttonText}>Track Order</Text>
       </TouchableOpacity>
     </ScrollView>
   );

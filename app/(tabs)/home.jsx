@@ -1,4 +1,7 @@
+// ✅ Full HomeScreen with hidden header on search
+
 import { SignedIn, SignedOut, useUser, useAuth } from "@clerk/clerk-expo";
+import FilterModal from "../../components/FilterModal";
 import {
   Ionicons,
   FontAwesome5,
@@ -29,7 +32,7 @@ import CustomToast from "../../components/CustomToast";
 import { useCart } from "../../hooks/useCart";
 import * as Notifications from "expo-notifications";
 import LottieView from "lottie-react-native";
-import { useCategories } from "../../hooks/useCategories"; // ✅ using categories hook
+import { useCategories } from "../../hooks/useCategories";
 
 const { width, height } = Dimensions.get("window");
 const cardSpacing = 20;
@@ -61,9 +64,14 @@ function useDebouncedValue(value, delay) {
 }
 
 export default function HomeScreen() {
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [minPrice, setMinPrice] = useState(0);
+  const [maxPrice, setMaxPrice] = useState(1000);
+  const [selectedSort, setSelectedSort] = useState(null);
+
   const { user } = useUser();
   const { getToken } = useAuth();
-  const { categories } = useCategories(); // ✅ live categories
+  const { categories } = useCategories();
   const [token, setToken] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -127,17 +135,16 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (token) {
-      fetchProducts();
+      fetchProducts({
+        minPrice,
+        maxPrice,
+        category: selectedCategory,
+        sort: selectedSort,
+      });
       fetchCart();
       fetchWishlist();
     }
   }, [token]);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchProducts();
-    setRefreshing(false);
-  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -156,6 +163,17 @@ export default function HomeScreen() {
     }, 2500);
     return () => clearTimeout(timeout);
   }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchProducts({
+      minPrice,
+      maxPrice,
+      category: selectedCategory,
+      sort: selectedSort,
+    });
+    setRefreshing(false);
+  };
 
   const filteredProducts = products.filter((p) => {
     const matchesSearch = p.title
@@ -206,9 +224,7 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               )}
             </View>
-            <TouchableOpacity
-              onPress={() => Alert.alert("Filter", "Filters coming soon!")}
-            >
+            <TouchableOpacity onPress={() => setFilterModalVisible(true)}>
               <Ionicons name="options-outline" size={24} color="black" />
             </TouchableOpacity>
           </View>
@@ -228,101 +244,111 @@ export default function HomeScreen() {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-        ListHeaderComponent={
-          <View style={{ paddingHorizontal: 20 }}>
-            <View style={{ height: 100 }} />
-            {/* 🔁 Banners */}
-            <FlatList
-              ref={bannerRef}
-              data={banners}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={(e) => {
-                const index = Math.round(e.nativeEvent.contentOffset.x / width);
-                setActiveIndex(index);
-              }}
-              renderItem={({ item }) => (
-                <Image
-                  source={{ uri: item.uri }}
-                  style={{ width, height: height * 0.2 }}
-                  resizeMode="cover"
-                />
-              )}
-            />
-            <View style={styles.dots}>
-              {banners.map((_, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.dot,
-                    { backgroundColor: i === activeIndex ? "#6CC51D" : "#ccc" },
-                  ]}
-                />
-              ))}
-            </View>
+        ListHeaderComponent={() =>
+          debouncedSearch.trim() === "" ? (
+            <View style={{ paddingHorizontal: 20 }}>
+              <View style={{ height: 100 }} />
+              {/* 🔁 Banners */}
+              <FlatList
+                ref={bannerRef}
+                data={banners}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={(e) => {
+                  const index = Math.round(
+                    e.nativeEvent.contentOffset.x / width
+                  );
+                  setActiveIndex(index);
+                }}
+                renderItem={({ item }) => (
+                  <Image
+                    source={{ uri: item.uri }}
+                    style={{ width, height: height * 0.2 }}
+                    resizeMode="cover"
+                  />
+                )}
+              />
+              <View style={styles.dots}>
+                {banners.map((_, i) => (
+                  <View
+                    key={i}
+                    style={[
+                      styles.dot,
+                      {
+                        backgroundColor: i === activeIndex ? "#6CC51D" : "#ccc",
+                      },
+                    ]}
+                  />
+                ))}
+              </View>
 
-            {/* 🏷️ Categories */}
-            <View style={styles.cat}>
-              <Text style={styles.sectionTitle}>Categories</Text>
-            </View>
+              {/* 🏷️ Categories */}
+              <View style={styles.cat}>
+                <Text style={styles.sectionTitle}>Categories</Text>
+              </View>
 
-            <FlatList
-              data={categories}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(item) => item.id.toString()}
-              renderItem={({ item }) => {
-                const Icon = iconLibraries[item.icon_lib] || Ionicons;
-                const isSelected = selectedCategory === item.label;
-                return (
-                  <TouchableOpacity
-                    onPress={() =>
-                      setSelectedCategory((prev) =>
-                        prev === item.label ? null : item.label
-                      )
-                    }
-                  >
-                    <View
-                      style={{ alignItems: "center", marginRight: 20, gap: 4 }}
+              <FlatList
+                data={categories}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item) => item.id.toString()}
+                renderItem={({ item }) => {
+                  const Icon = iconLibraries[item.icon_lib] || Ionicons;
+                  const isSelected = selectedCategory === item.label;
+                  return (
+                    <TouchableOpacity
+                      onPress={() =>
+                        setSelectedCategory((prev) =>
+                          prev === item.label ? null : item.label
+                        )
+                      }
                     >
                       <View
                         style={{
-                          width: 60,
-                          height: 60,
-                          borderRadius: 999,
-                          justifyContent: "center",
                           alignItems: "center",
-                          backgroundColor: item.bg_color || "#eee",
-                          borderWidth: isSelected ? 2 : 0,
-                          borderColor: isSelected ? "#000" : "transparent",
+                          marginRight: 20,
+                          gap: 4,
                         }}
                       >
-                        <Icon name={item.icon} size={30} color="black" />
+                        <View
+                          style={{
+                            width: 60,
+                            height: 60,
+                            borderRadius: 999,
+                            justifyContent: "center",
+                            alignItems: "center",
+                            backgroundColor: item.bg_color || "#eee",
+                            borderWidth: isSelected ? 2 : 0,
+                            borderColor: isSelected ? "#000" : "transparent",
+                          }}
+                        >
+                          <Icon name={item.icon} size={30} color="black" />
+                        </View>
+                        <Text style={styles.categoryLabel}>{item.label}</Text>
                       </View>
-                      <Text style={styles.categoryLabel}>{item.label}</Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              }}
-              contentContainerStyle={{ paddingVertical: 10 }}
-            />
+                    </TouchableOpacity>
+                  );
+                }}
+                contentContainerStyle={{ paddingVertical: 10 }}
+              />
 
-            {selectedCategory && (
-              <TouchableOpacity
-                onPress={() => setSelectedCategory(null)}
-                style={{ marginBottom: 10 }}
-              >
-                <Text style={{ color: "blue", fontSize: 16 }}>
-                  Clear Category Filter
-                </Text>
-              </TouchableOpacity>
-            )}
+              {selectedCategory && (
+                <TouchableOpacity
+                  onPress={() => setSelectedCategory(null)}
+                  style={{ marginBottom: 10 }}
+                >
+                  <Text style={{ color: "blue", fontSize: 16 }}>
+                    Clear Category Filter
+                  </Text>
+                </TouchableOpacity>
+              )}
 
-            <View style={styles.cat}>
-              <Text style={styles.sectionTitle}>Featured Products</Text>
+              <View style={styles.cat}>
+                <Text style={styles.sectionTitle}>Featured Products</Text>
+              </View>
             </View>
-          </View>
+          ) : null
         }
         renderItem={({ item }) =>
           !isLoading && (
@@ -348,6 +374,41 @@ export default function HomeScreen() {
           paddingBottom: 100,
           ...(debouncedSearch.trim() !== "" && { marginTop: 100 }),
         }}
+      />
+      <FilterModal
+        visible={filterModalVisible}
+        setVisible={setFilterModalVisible}
+        onClose={() => {
+          setFilterModalVisible(false);
+          fetchProducts({
+            minPrice,
+            maxPrice,
+            category: selectedCategory,
+            sort: selectedSort,
+          });
+        }}
+        categories={categories}
+        selectedCategory={selectedCategory}
+        setSelectedCategory={setSelectedCategory}
+        minPrice={minPrice}
+        setMinPrice={setMinPrice}
+        maxPrice={maxPrice}
+        setMaxPrice={setMaxPrice}
+        selectedSort={selectedSort}
+        setSelectedSort={setSelectedSort}
+        onReset={() => {
+          setSelectedCategory(null);
+          setMinPrice(0);
+          setMaxPrice(1000);
+          setSelectedSort(null);
+          fetchProducts({
+            minPrice: 0,
+            maxPrice: 1000,
+            category: null,
+            sort: null,
+          });
+        }}
+        fetchProducts={fetchProducts}
       />
     </View>
   );

@@ -5,6 +5,7 @@ import {
   Dimensions,
   TouchableOpacity,
   TextInput,
+  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -42,7 +43,7 @@ export default function CheckoutScreen() {
   });
   const [paymentMethod, setPaymentMethod] = useState("cash");
   const [showAddAddress, setShowAddAddress] = useState(false);
-  const SHIPPING = 100;
+  const SHIPPING = 0;
 
   useEffect(() => {
     const loadAuth = async () => {
@@ -130,7 +131,10 @@ export default function CheckoutScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={{ paddingBottom: 50 }}
+    >
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
           <Ionicons
@@ -149,17 +153,21 @@ export default function CheckoutScreen() {
           <Text style={styles.sectionTitle}>Order Summary</Text>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Subtotal</Text>
-            <Text style={styles.summaryValue}>Ksh. {subtotal.toFixed(2)}</Text>
+            <Text style={styles.summaryValue}>
+              Ksh. {subtotal.toFixed(0)}.00
+            </Text>
           </View>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Shipping</Text>
-            <Text style={styles.summaryValue}>Ksh. {SHIPPING.toFixed(2)}</Text>
+            <Text style={styles.summaryValue}>
+              Ksh. {SHIPPING.toFixed(0)}.00
+            </Text>
           </View>
           <View style={styles.divider} />
           <View style={styles.summaryRow}>
             <Text style={styles.totalLabel}>Total</Text>
             <Text style={styles.totalLabel}>
-              Ksh. {(subtotal + SHIPPING).toFixed(2)}
+              Ksh. {(subtotal + SHIPPING).toFixed(0)}.00
             </Text>
           </View>
         </View>
@@ -256,7 +264,7 @@ export default function CheckoutScreen() {
       >
         <Text style={styles.saveText}>Place Order</Text>
       </TouchableOpacity>
-    </View>
+    </ScrollView>
   );
 }
 
